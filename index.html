@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Graticule</title>
+    <script src="Cesium/Cesium.js"></script>
+    <script src="GraticuleTiles.js"></script>
+    <style>
+        @import url(Cesium/Widgets/CesiumWidget/CesiumWidget.css);
+        #cesiumContainer {
+            position: absolute;
+            top: 0px;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            overflow: hidden;
+            padding: 0;
+            font-family: sans-serif;
+        }
+        #toolbar {
+            position: absolute;
+            top: 0px;
+            left: 0;
+            display: inline;
+            margin: 10px;
+            padding: 0px;
+            background: white;
+        }
+        #logging {
+            position: absolute;
+            bottom: 0px;
+            right: 0;
+            display: inline;
+            margin: 10px;
+            padding: 10px;
+            background: white;
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body onload="start()">
+
+    <div id="cesiumContainer"></div>
+    <div id="toolbar">
+    </div>
+    <div id="logging">
+    </div>
+
+<script>
+
+    Cesium.BingMapsApi.defaultKey = 'AgVponCiOIcztTV3i0JC5gknsMO-x4RMrWOMPwoRLOfzi0kwdAQfol4Qsu9AYxSg';
+
+    function start() {
+        // create the almighty cesium widget
+        var cesiumWidget = new Cesium.CesiumWidget('cesiumContainer');
+        var scene = cesiumWidget.scene;
+        var graticule = new GraticuleTilesLines({
+            tileWidth: 512,
+            tileHeight: 512,
+            numLines: 10
+        }, scene);
+        cesiumWidget.centralBody.getImageryLayers().addImageryProvider(graticule);
+
+        var logging = document.getElementById('logging');
+        function loggingMessage(message) {
+            logging.innerHTML = message;
+        }
+
+    }
+
+</script>
+</body>
+</html>
