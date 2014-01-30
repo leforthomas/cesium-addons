@@ -3,7 +3,8 @@
 <head>
     <title>Graticule</title>
     <script src="Cesium/Cesium.js"></script>
-    <script src="GraticuleTiles.js"></script>
+    <script src="Graticule.js"></script>
+    <script src="InfoWindow.js"></script>
     <style>
         @import url(Cesium/Widgets/CesiumWidget/CesiumWidget.css);
         #cesiumContainer {
@@ -36,6 +37,33 @@
             background: white;
         }
 
+        .infoWindow {
+            position: absolute;
+            min-width: 100px;
+            max-width: 300px;
+        }
+        .infoWindow #frame {
+            padding: 10px;
+            border: 1px solid black;
+            background: white;
+        }
+        .infoWindow #close {
+            float: right;
+            margin: 5px 2px;
+            font-size: small;
+            color: gray;
+            cursor: pointer;
+        }
+        .infoWindow #arrow {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            margin-left: -10px;
+            border-right: 10px solid transparent;
+            border-left: 10px solid transparent;
+            border-top: 10px solid white;
+        }
+
         body {
             padding: 0;
             margin: 0;
@@ -59,12 +87,20 @@
         // create the almighty cesium widget
         var cesiumWidget = new Cesium.CesiumWidget('cesiumContainer');
         var scene = cesiumWidget.scene;
-        var graticule = new GraticuleTilesLines({
+        var graticule = new Graticule({
             tileWidth: 512,
             tileHeight: 512,
             numLines: 10
         }, scene);
         cesiumWidget.centralBody.getImageryLayers().addImageryProvider(graticule);
+
+        var testWidget = document.createElement('button');
+        testWidget.innerHTML = 'Test';
+        testWidget.onclick = function(){alert('Clicked!')};
+        var infoWindow = new InfoWindow({}, cesiumWidget);
+        infoWindow.showAt(10, 0, testWidget);
+        infoWindow.setVisible(true);
+        scene.getPrimitives().add(infoWindow);
 
         var logging = document.getElementById('logging');
         function loggingMessage(message) {
