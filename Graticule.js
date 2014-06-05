@@ -28,16 +28,18 @@ var Graticule = (function() {
         this._tileWidth = description.tileWidth || 256;
         this._tileHeight = description.tileHeight || 256;
 
+        this._ready = true;
+
         // default to decimal intervals
         this._sexagesimal = description.sexagesimal || false;
         this._numLines = description.numLines || 50;
 
         this._scene = scene;
         this._labels = new Cesium.LabelCollection();
-        scene.getPrimitives().add(this._labels);
+        scene.primitives.add(this._labels);
         this._polylines = new Cesium.PolylineCollection();
-        scene.getPrimitives().add(this._polylines);
-        this._ellipsoid = scene.getPrimitives().getCentralBody().getEllipsoid();
+        scene.primitives.add(this._polylines);
+        this._ellipsoid = scene.globe.ellipsoid;
 
         var canvas = document.createElement('canvas');
         canvas.width = 256;
@@ -46,47 +48,105 @@ var Graticule = (function() {
 
     };
 
-    _.prototype.getProxy = function() {
-        return undefined;
-    };
+    var definePropertyWorks = (function() {
+        try {
+            return 'x' in Object.defineProperty({}, 'x', {});
+        } catch (e) {
+            return false;
+        }
+    })();
 
-    _.prototype.getTileWidth = function() {
-        return this._tileWidth;
-    };
+    /**
+     * Defines properties on an object, using Object.defineProperties if available,
+     * otherwise returns the object unchanged.  This function should be used in
+     * setup code to prevent errors from completely halting JavaScript execution
+     * in legacy browsers.
+     *
+     * @private
+     *
+     * @exports defineProperties
+     */
+    var defineProperties = Object.defineProperties;
+    if (!definePropertyWorks || !defineProperties) {
+        defineProperties = function(o) {
+            return o;
+        };
+    }
 
-    _.prototype.getTileHeight = function() {
-        return this._tileHeight;
-    };
+    defineProperties(_.prototype, {
+        url : {
+            get : function() {
+                return undefined;
+            }
+        },
 
-    _.prototype.getMaximumLevel = function() {
-        return 18;
-    };
+        proxy : {
+            get : function() {
+                return undefined;
+            }
+        },
 
-    _.prototype.getMinimumLevel = function() {
-        return 0;
-    };
+        tileWidth : {
+            get : function() {
+                return this._tileWidth;
+            }
+        },
 
-    _.prototype.getTilingScheme = function() {
-        return this._tilingScheme;
-    };
+        tileHeight: {
+            get : function() {
+                return this._tileHeight;
+            }
+        },
 
-    _.prototype.getExtent = function() {
-        return this._tilingScheme.getExtent();
-    };
+        maximumLevel : {
+            get : function() {
+                return 18;
+            }
+        },
 
-    _.prototype.getTileDiscardPolicy = function() {
-        return undefined;
-    };
+        minimumLevel : {
+            get : function() {
+                return 0;
+            }
+        },
+        tilingScheme : {
+            get : function() {
+                return this._tilingScheme;
+            }
+        },
+        rectangle : {
+            get : function() {
+                return this._tilingScheme.rectangle;
+            }
+        },
+        tileDiscardPolicy : {
+            get : function() {
+                return undefined;
+            }
+        },
+        errorEvent : {
+            get : function() {
+                return this._errorEvent;
+            }
+        },
+        ready : {
+            get : function() {
+                return this._ready;
+            }
+        },
+        credit : {
+            get : function() {
+                return this._credit;
+            }
+        },
+        hasAlphaChannel : {
+            get : function() {
+                return true;
+            }
+        }
+    });
 
-    _.prototype.getErrorEvent = function() {
-        return this._errorEvent;
-    };
-
-    _.prototype.isReady = function() {
-        return true;
-    };
-
-    _.prototype.makeLabel = function(lng, lat, text, top, color) {
+     _.prototype.makeLabel = function(lng, lat, text, top, color) {
         this._labels.add({
             position : this._ellipsoid.cartographicToCartesian(new Cesium.Cartographic(lng, lat, 10.0)),
             text : text,
@@ -149,11 +209,11 @@ var Graticule = (function() {
             }
             path.push(new Cesium.Cartographic(lng, maxLat));
             this._polylines.add({
-                        positions : ellipsoid.cartographicArrayToCartesianArray(path),
-                        width: 1
+                positions : ellipsoid.cartographicArrayToCartesianArray(path),
+                width: 1
             });
             var degLng = Cesium.Math.toDegrees(lng);
-            this.makeLabel(lng, latitudeText, this._sexagesimal ? this.decToSex(degLng) : degLng.toFixed(gridPrecision(dLng)), false);
+            this.makeLabel(lng, latitudeText, this._sexagesimal ? this._decToSex(degLng) : degLng.toFixed(gridPrecision(dLng)), false);
         }
 
         // lats
@@ -170,47 +230,56 @@ var Graticule = (function() {
                 width: 1
             });
             var degLat = Cesium.Math.toDegrees(lat);
-            this.makeLabel(longitudeText, lat, this._sexagesimal ? this.decToSex(degLat) : degLat.toFixed(gridPrecision(dLat)), true);
+            this.makeLabel(longitudeText, lat, this._sexagesimal ? this._decToSex(degLat) : degLat.toFixed(gridPrecision(dLat)), true);
         }
     };
 
     _.prototype.requestImage = function(x, y, level) {
 
-        this._drawGrid(this.getExtentView());
+        if(this._show) {
+            this._drawGrid(this._getExtentView());
+        }
 
         return this._canvas;
     };
 
-    _.prototype.getCredit = function() {
-        return undefined;
-    };
-
-    _.prototype.latLngToPixel = function(lat, lng, extent, width, height) {
-        return ;
+    _.prototype.setVisible = function(visible) {
+        this._show = visible;
+        if(!visible) {
+            this._polylines.removeAll();
+            this._labels.removeAll();
+        } else {
+            this._currentExtent = null;
+            this._drawGrid(this._getExtentView());
+        }
     }
 
-    _.prototype.decToSex = function(d) {
+    _.prototype.isVisible = function() {
+        return this._show;
+    }
+
+    _.prototype._decToSex = function(d) {
         var degs = Math.floor(d);
         var mins = ((Math.abs(d) - degs) * 60.0).toFixed(2);
         if (mins == "60.00") { degs += 1.0; mins = "0.00"; }
         return [degs, ":", mins].join('');
     };
 
-    _.prototype.getExtentView = function(){
-        var controller = this._scene.getCamera().controller;
-        var canvas = this._scene.getCanvas();
+    _.prototype._getExtentView = function(){
+        var camera = this._scene.camera ;
+        var canvas = this._scene.canvas;
         var corners = [
-            controller.pickEllipsoid(new Cesium.Cartesian2(0, 0), this._ellipsoid),
-            controller.pickEllipsoid(new Cesium.Cartesian2(canvas.width, 0), this._ellipsoid),
-            controller.pickEllipsoid(new Cesium.Cartesian2(0, canvas.height), this._ellipsoid),
-            controller.pickEllipsoid(new Cesium.Cartesian2(canvas.width, canvas.height), this._ellipsoid)
-           ];
+            camera.pickEllipsoid(new Cesium.Cartesian2(0, 0), this._ellipsoid),
+            camera.pickEllipsoid(new Cesium.Cartesian2(canvas.width, 0), this._ellipsoid),
+            camera.pickEllipsoid(new Cesium.Cartesian2(0, canvas.height), this._ellipsoid),
+            camera.pickEllipsoid(new Cesium.Cartesian2(canvas.width, canvas.height), this._ellipsoid)
+        ];
         for(var index = 0; index < 4; index++) {
             if(corners[index] === undefined) {
-                return Cesium.Extent.MAX_VALUE;
+                return Cesium.Rectangle.MAX_VALUE;
             }
         }
-        return Cesium.Extent.fromCartographicArray(this._ellipsoid.cartesianArrayToCartographicArray(corners));
+        return Cesium.Rectangle.fromCartographicArray(this._ellipsoid.cartesianArrayToCartographicArray(corners));
     }
 
     function gridPrecision(dDeg) {
