@@ -88,7 +88,9 @@
 
     function start() {
         // create the almighty cesium widget
-        var cesiumWidget = new Cesium.CesiumWidget('cesiumContainer');
+        var cesiumWidget = new Cesium.CesiumWidget('cesiumContainer', {
+            scene3DOnly: true
+        });
         var scene = cesiumWidget.scene;
         var graticule = new Graticule({
             tileWidth: 512,
@@ -99,6 +101,12 @@
         document.getElementById("gridToggle").onclick = function(e) {
             graticule.setVisible(!graticule.isVisible())
         };
+        var cesiumTerrainProviderHeightmaps = new Cesium.CesiumTerrainProvider({
+            url : 'https://cesiumjs.org/smallterrain',
+            credit : 'Terrain data courtesy Analytical Graphics, Inc.'
+        });
+
+        scene.terrainProvider = cesiumTerrainProviderHeightmaps;
 
         var testWidget = document.createElement('button');
         testWidget.innerHTML = 'Test';
