@@ -110,16 +110,62 @@ var InfoWindow = (function() {
     }
 
 */
+    
+    _.prototype.computeVisible = function(){
+        // Ellipsoid radii - WGS84 shown here
+        var rX = 6378137.0;
+        var rY = 6378137.0;
+        var rZ = 6356752.3142451793;
+        // Vector CV
+        var cameraPosition = this._scene.camera.position;
+        var cvX = cameraPosition.x / rX;
+        var cvY = cameraPosition.y / rY;
+        var cvZ = cameraPosition.z / rZ;
+
+        var vhMagnitudeSquared = cvX * cvX + cvY * cvY + cvZ * cvZ - 1.0;
+
+        // Target position, transformed to scaled space
+
+        var position = this._position;
+        var tX = position.x / rX;
+        var tY = position.y / rY;
+        var tZ = position.z / rZ;
+
+        // Vector VT
+        var vtX = tX - cvX;
+        var vtY = tY - cvY;
+        var vtZ = tZ - cvZ;
+        var vtMagnitudeSquared = vtX * vtX + vtY * vtY + vtZ * vtZ;
+
+        // VT dot VC is the inverse of VT dot CV
+        var vtDotVc = -(vtX * cvX + vtY * cvY + vtZ * cvZ);
+
+        var isOccluded = vtDotVc > vhMagnitudeSquared &&
+            vtDotVc * vtDotVc / vtMagnitudeSquared > vhMagnitudeSquared;
+
+        if(isOccluded){
+            this.setVisible(false);
+        }else{
+            this.setVisible(true);
+        }
+
+    };
 
     _.prototype.update = function(context, frameState, commandList) {
+        this.computeVisible();
+
         if(!this._visible || !this._position) {
             return;
         }
         // get the position on the globe as screen coordinates
+        // coordinates with origin at the top left corner
         var coordinates = Cesium.SceneTransforms.wgs84ToWindowCoordinates(this._scene, this._position);
         if(coordinates) {
-            this._div.style.left = (Math.floor(coordinates.x) - this._div.clientWidth / 2) + "px";
-            this._div.style.bottom = (Math.floor(coordinates.y) + 8) + "px";
+            var left = (Math.floor(coordinates.x) - this._div.clientWidth / 2) + "px";
+            var top = (Math.floor(coordinates.y) - this._div.clientHeight) + "px";
+            this._div.tabIndex = 5;
+            this._div.style.left = left;
+            this._div.style.top = top;
         }
     }
 
